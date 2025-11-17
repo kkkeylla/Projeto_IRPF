@@ -2,7 +2,10 @@ import flet as ft
 
 # regras 
 DEPENDENT = 189.59
-SIMPLIFIED = 528.00
+# Dedução simplificada: 20% do rendimento com teto anual (ex.: R$ 16.754,34 -> mensal equivalente)
+# Observe: atualize `SIMPLIFIED_TETO_ANUAL` conforme regras oficiais da Receita
+SIMPLIFIED_TETO_ANUAL = 16754.34
+SIMPLIFIED_TETO_MENSAL = round(SIMPLIFIED_TETO_ANUAL / 12, 2)
 
 # tabela de faixas (limite_superior, aliquota_percent, parcela_deduzir)
 TABELA = [
@@ -29,9 +32,11 @@ def calcular(salario, dependentes, usar_simpl):
     except:
         d = 0
     ded_depend = DEPENDENT * d
+    # dedução simplificada = min(20% do salário, teto mensal)
+    simpl_calc = min(0.20 * s, SIMPLIFIED_TETO_MENSAL)
     ded = ded_depend
-    if usar_simpl and SIMPLIFIED > ded_depend:
-        ded = SIMPLIFIED
+    if usar_simpl and simpl_calc > ded_depend:
+        ded = simpl_calc
     base = s - ded
     if base < 0:
         base = 0.0
@@ -61,9 +66,9 @@ def main(page: ft.Page):
     page.window_width = 360
     page.window_height = 700
 
-    salario = ft.TextField(label="Salário bruto (R$)", keyboard_type=ft.KeyboardType.NUMBER)
-    dependentes = ft.TextField(label="Dependentes", keyboard_type=ft.KeyboardType.NUMBER)
-    simpl = ft.Checkbox(label="Usar desconto simplificado (R$ 528,00)")
+    salario = ft.TextField(label="Salário bruto (R$)", keyboard_type=ft.KeyboardType.NUMBER, hint_text="Ex: 10000.00")
+    dependentes = ft.TextField(label="Dependentes", keyboard_type=ft.KeyboardType.NUMBER, hint_text="0")
+    simpl = ft.Checkbox(label="Usar desconto simplificado (20% limitado ao teto)")
     resultado = ft.Column()
 
     def on_click(e):
@@ -81,8 +86,18 @@ def main(page: ft.Page):
         resultado.controls.append(ft.Text(f"Salário líquido: R$ {res['liquido']:.2f}"))
         page.update()
 
-    btn = ft.ElevatedButton(text="Calcular", on_click=on_click)
-    page.add(ft.Column([ft.Text('Calculadora IRPF'), salario, dependentes, simpl, btn, ft.Divider(), resultado], spacing=8))
+    def on_clear(e):
+        salario.value = ""
+        dependentes.value = ""
+        simpl.value = False
+        resultado.controls.clear()
+        page.update()
+
+    btn_calc = ft.ElevatedButton(text="Calcular", on_click=on_click)
+    btn_clear = ft.OutlinedButton(text="Limpar", on_click=on_clear)
+    botoes = ft.Row([btn_calc, btn_clear], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
+
+    page.add(ft.Column([ft.Text('Calculadora IRPF'), salario, dependentes, simpl, botoes, ft.Divider(), resultado], spacing=8))
 
 if __name__ == '__main__':
     ft.app(target=main)
